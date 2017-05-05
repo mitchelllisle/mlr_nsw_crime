@@ -1,0 +1,53 @@
+---
+title: "NSW Crime Data"
+output: html_notebook
+---
+```{r}
+# Load required packages
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+
+# Load CSV into crime_data variable from URL
+crime_data <- read.csv(url("http://data.gov.au/storage/f/2013-09-12T23%3A32%3A36.918Z/rci-offencebymonth.csv"))
+crime_data
+```
+
+
+```{r}
+crime_data %<>%
+  select(LGA, Offence.category, Jan.1995:Dec.2012) %>%
+  group_by(LGA, Offence.category) %>%
+  # convert from wide to long format
+  gather(Year, Count, Jan.1995:Dec.2012) %>%
+  group_by(LGA, Offence.category, Year) %>%
+  # sum all values to get correct counts (Should this be a distinct, not a count?)
+  summarise(total_count = sum(Count)) %>%
+  filter(LGA != "") %>%
+  mutate(monthfill = "01") %>%
+  unite(date, monthfill, Year, sep = " ") %>%
+  mutate(date = dmy(date))
+  crime_data
+```
+
+
+```{r}
+crime_data %>%
+  filter(LGA == "Wollondilly") %>%
+  ggplot(aes(date, total_count)) +
+  geom_line() +
+  facet_wrap(~ Offence.category) +
+  theme_hc()
+```
+```{r}
+# attempt at a plotly subplot, doesnt work
+crime_data %>%
+  plot_ly(x = ~date, y = ~total_count,
+          yaxis = ~paste0("y", Offence.category)) %>%
+  add_lines() %>%
+  subplot(nrows = 5, shareX = TRUE)
+```
+
